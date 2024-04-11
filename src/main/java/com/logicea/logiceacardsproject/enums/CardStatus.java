@@ -1,7 +1,7 @@
 package com.logicea.logiceacardsproject.enums;
 
 public enum CardStatus {
-    TODO,
+    ToDo,
     InProgress,
     Done
 }
