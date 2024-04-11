@@ -11,7 +11,7 @@ import lombok.Setter;
 @Builder
 public class ErrorsResponseDto {
 
-    private String status;
+    private int status;
     private String message;
     private String cause;
 

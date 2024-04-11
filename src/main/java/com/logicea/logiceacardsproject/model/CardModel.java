@@ -3,12 +3,10 @@ package com.logicea.logiceacardsproject.model;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.logicea.logiceacardsproject.enums.CardStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
-import java.sql.Timestamp;
 import java.util.Date;
 import java.util.UUID;
 
@@ -36,7 +34,7 @@ public class CardModel {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default
-    private CardStatus status = CardStatus.To_Do; // default status, if no status is provided
+    private CardStatus status = CardStatus.TODO; // default status, if no status is provided
     @Temporal(TemporalType.DATE)
     @CreationTimestamp
     @Column(name = "date_created")

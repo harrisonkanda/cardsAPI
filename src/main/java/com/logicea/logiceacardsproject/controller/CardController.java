@@ -6,6 +6,7 @@ import com.logicea.logiceacardsproject.dto.request.CardRequestDto;
 import com.logicea.logiceacardsproject.dto.request.filters.CardFilterRequest;
 import com.logicea.logiceacardsproject.dto.request.filters.PaginationFilterRequest;
 import com.logicea.logiceacardsproject.dto.response.CardResponseDto;
+import com.logicea.logiceacardsproject.dto.response.ErrorsResponseDto;
 import com.logicea.logiceacardsproject.enums.Role;
 import com.logicea.logiceacardsproject.exception.CardNameAlreadyTakenException;
 import com.logicea.logiceacardsproject.model.UserModel;
@@ -31,6 +32,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.UUID;
 
 @Tag(name = "Cards-API", description = "CARD CRUD OPERATION")
@@ -51,13 +56,12 @@ public class CardController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", content = {
                     @Content(schema = @Schema(implementation = CardResponseDto.class), mediaType = "application/json")}),
-            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema())})
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity create(@Valid @RequestBody CardRequestDto cardRequestDto,
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CardResponseDto> create(@Valid @RequestBody CardRequestDto cardRequestDto,
                                  Authentication authentication, BindingResult result) {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -66,46 +70,42 @@ public class CardController {
             throw new CardNameAlreadyTakenException("Card name must be unique. Name Already taken");
         }
 
-        cardService.save(cardRequestDto, userDetails.getUsername());
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(cardService.save(cardRequestDto, userDetails.getUsername()));
     }
 
     @Operation(summary = "Filter Cards", security = @SecurityRequirement(name = "bearer-key"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", content = {
                     @Content(schema = @Schema(implementation = CardResponseDto.class), mediaType = "application/json")}),
-            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema())})
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Page<CardResponseDto>> filterCards(@ModelAttribute CardFilterRequest cardFilterRequest,
                                                              @ModelAttribute PaginationFilterRequest paginationFilterRequest,
                                                              Authentication authentication, BindingResult result) {
 
-
+        Date date = null;
         UserDetails userDetails = ((UserDetails) authentication.getPrincipal());
         UserModel userModel = userService.findUserByEmail(userDetails.getUsername()).get();
         boolean isAdmin = userModel.getRole().equals(Role.ADMIN) ? true : false;
 
-        Sort.Direction direction = null;
-        String sortBy = "";
-
-        if (paginationFilterRequest.getSortBy() != "") {
-            sortBy = paginationFilterRequest.getSortBy();
-            direction = paginationFilterRequest.getSortOrder().equalsIgnoreCase("DESC") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        PageRequest pageRequest = cardService.getPageRequest(paginationFilterRequest);
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        if (cardFilterRequest.getDateCreated().length() >6) {
+            try {
+                date = dateFormat.parse(cardFilterRequest.getDateCreated());
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
         }
-
-        PageRequest pageRequest = PageRequest.of((paginationFilterRequest.getPage() > 0 ? paginationFilterRequest.getPage() : 0),
-                paginationFilterRequest.getPageSize(),
-                Sort.by(direction, sortBy)
-        );
 
         Page<CardResponseDto> paginatedCards = cardService.filterCardsBySpecification(
                 cardFilterRequest.getName(),
                 cardFilterRequest.getColor(),
                 cardFilterRequest.getStatus(),
-                cardFilterRequest.getDateCreated(),
+                date,
                 userModel.getUserId(),
                 isAdmin,
                 pageRequest
@@ -117,9 +117,9 @@ public class CardController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", content = {
                     @Content(schema = @Schema(implementation = CardResponseDto.class), mediaType = "application/json")}),
-            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema())})
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
     @GetMapping(value = "/{cardId}")
     public ResponseEntity<CardResponseDto> findCardById(@PathVariable(value = "cardId", required = true) UUID cardId,
@@ -131,9 +131,9 @@ public class CardController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", content = {
                     @Content(schema = @Schema(implementation = CardResponseDto.class), mediaType = "application/json")}),
-            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema())})
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
     @PutMapping(value = "/{cardId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CardResponseDto> update(@PathVariable(value = "cardId", required = true) UUID cardId,
@@ -147,9 +147,9 @@ public class CardController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", content = {
                     @Content(schema = @Schema(), mediaType = "application/json")}),
-            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema())}),
-            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema())})
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
     @DeleteMapping(value = "/{cardId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity delete(@PathVariable(value = "cardId", required = true) UUID cardId,

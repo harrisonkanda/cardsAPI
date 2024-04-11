@@ -1,6 +1,9 @@
 package com.logicea.logiceacardsproject.service;
 
+import static com.logicea.logiceacardsproject.util.CommonUtil.hasAdminRole;
+
 import com.logicea.logiceacardsproject.dto.request.CardRequestDto;
+import com.logicea.logiceacardsproject.dto.request.filters.PaginationFilterRequest;
 import com.logicea.logiceacardsproject.dto.response.CardResponseDto;
 import com.logicea.logiceacardsproject.enums.CardStatus;
 import com.logicea.logiceacardsproject.exception.AccessDeniedException;
@@ -13,20 +16,13 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.logicea.logiceacardsproject.util.CommonUtil.hasAdminRole;
 
 @Service
 @Slf4j
@@ -34,11 +30,16 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final UserService userService;
+    Set<String> sortableColumns = new HashSet<>();
 
     @Autowired
     public CardService(final CardRepository cardRepository, final UserService userService) {
         this.cardRepository = cardRepository;
         this.userService = userService;
+        sortableColumns.add("name");
+        sortableColumns.add("color");
+        sortableColumns.add("description");
+        sortableColumns.add("status");
     }
 
     public Optional<CardModel> findByName(final String name) {
@@ -67,6 +68,7 @@ public class CardService {
         return cardResponseDto;
     }
 
+    @Transactional
     public CardResponseDto updateCardById(final UUID cardId, CardRequestDto cardRequestDto, Authentication authentication) {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -92,6 +94,7 @@ public class CardService {
                 .description(updatedCard.getDescription())
                 .color(updatedCard.getColor())
                 .date_created(updatedCard.getDateCreated())
+                .status(updatedCard.getStatus())
                 .cardId(updatedCard.getCardId())
                 .build();
     }
@@ -111,7 +114,7 @@ public class CardService {
     }
 
     @Transactional(rollbackOn = DataIntegrityViolationException.class)
-    public void save(CardRequestDto cardRequestDto, final String email) {
+    public CardResponseDto save(CardRequestDto cardRequestDto, final String email) {
 
         Optional<UserModel> user = userService.findUserByEmail(email);
 
@@ -122,15 +125,24 @@ public class CardService {
                 .owner(user.get())
                 .build();
 
-        cardRepository.save(card);
+        CardModel createdCard = cardRepository.save(card);
+
+        return CardResponseDto.builder()
+                .cardId(createdCard.getCardId())
+                .name(createdCard.getName())
+                .status(createdCard.getStatus())
+                .color(createdCard.getColor())
+                .description(createdCard.getDescription())
+                .date_created(createdCard.getDateCreated())
+                .build();
     }
 
     public Page<CardResponseDto> filterCardsBySpecification(String name, String color, CardStatus status,
                                                             Date dateCreated, UUID user_id, boolean isAdmin, Pageable pageable) {
 
         Page<CardModel> cardModels = cardRepository.findAll(
-                CardSpecification.withName(name)
-                        .and(CardSpecification.withColor(color))
+                CardSpecification.withName(skipPlaceholder(name))
+                        .and(CardSpecification.withColor(skipPlaceholder(color)))
                         .and(CardSpecification.withStatus(status))
                         .and(CardSpecification.withDateCreated(dateCreated))
                         .and(CardSpecification.withUserId(user_id, isAdmin)),
@@ -145,9 +157,38 @@ public class CardService {
                             .color(element.getColor())
                             .date_created(element.getDateCreated())
                             .cardId(element.getCardId())
+                            .status(element.getStatus())
                             .build();
 
                     return card;
                 }).collect(Collectors.toList()), cardModels.getPageable(), cardModels.getTotalElements());
+    }
+
+    public PageRequest getPageRequest(PaginationFilterRequest paginationFilterRequest) {
+
+        Sort.Direction direction;
+        String sortBy = skipPlaceholder(paginationFilterRequest.getSortBy());
+        if ((sortBy == null) || !isSortableColumn(sortBy)){
+            sortBy = "name";
+        }
+
+        direction = paginationFilterRequest.getSortOrder().equalsIgnoreCase("DESC") ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        PageRequest pageRequest = PageRequest.of((paginationFilterRequest.getPage() > 0 ? paginationFilterRequest.getPage() : 0),
+                paginationFilterRequest.getPageSize() > 0 ? paginationFilterRequest.getPageSize() : 10,
+                Sort.by(direction, sortBy)
+        );
+        return pageRequest;
+    }
+
+    public String skipPlaceholder(String filter) {
+        if (filter.equalsIgnoreCase("string") || filter.equals("")) {
+            return null;
+        }
+        return filter;
+    }
+
+    public boolean isSortableColumn(String column) {
+        return sortableColumns.contains(column);
     }
 }

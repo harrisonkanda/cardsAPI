@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "cards" (
     "color" VARCHAR(20),
     "description" VARCHAR(200),
     "status" VARCHAR(200) NOT NULL,
-    "date_created" timestamp without time zone,
+    "date_created" DATE DEFAULT CURRENT_DATE,
     "owner" uuid NOT NULL,
     FOREIGN KEY ("owner") REFERENCES "users" ("user_id"),
     CONSTRAINT "PK_cards_cardId"  PRIMARY KEY ("card_id"),

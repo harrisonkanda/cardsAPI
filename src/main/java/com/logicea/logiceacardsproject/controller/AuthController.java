@@ -44,10 +44,10 @@ public class AuthController {
     @Operation(summary = "For Login and Token Generation")
     @ApiResponses({
             @ApiResponse(responseCode = "200", content = {
-                    @Content(schema = @Schema(implementation = TokenResponse.class), mediaType = "application/json") }),
-            @ApiResponse(responseCode = "500", content = { @Content(schema = @Schema()) }),
-            @ApiResponse(responseCode = "400", content = { @Content(schema = @Schema()) }),
-            @ApiResponse(responseCode = "401",description = "Unauthorized", content = { @Content(schema = @Schema()) })
+                    @Content(schema = @Schema(implementation = TokenResponse.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "500", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "400", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = {@Content(schema = @Schema(implementation = ErrorsResponseDto.class), mediaType = "application/json")})
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> login(@Valid @RequestBody UserLoginDto userLoginRequest, BindingResult result) {
@@ -62,7 +62,7 @@ public class AuthController {
             return ResponseEntity.ok().body(TokenResponse.builder().token(token).status("Success").build().toString());
         } catch (Exception exception) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ErrorsResponseDto.builder()
-                    .message(exception.getMessage()).cause(exception.getCause().getLocalizedMessage()).status("Failed").build().toString());
+                    .message(exception.getMessage()).cause(exception.getCause().getLocalizedMessage()).status(HttpStatus.UNAUTHORIZED.value()).build().toString());
         }
     }
 }

@@ -1,7 +1,5 @@
 package com.logicea.logiceacardsproject.security.jwt;
 
-import com.logicea.logiceacardsproject.exception.JwtExpiredTokenException;
-import com.logicea.logiceacardsproject.exception.JwtMulformedTokenException;
 import com.logicea.logiceacardsproject.service.UserService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -16,7 +14,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 
 @Component
@@ -31,16 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String accessToken = extractJwtFromRequestHeader(request);
         Claims claims = null;
-
-        if (accessToken == "") {
-            throw new JwtMulformedTokenException("Missing or mulformed access token. " +
-                    "Valid access token must be supplied in the Request Header");
-        }
-        try {
-            claims = jwtTokenProviderService.getClaimsFromJwtToken(accessToken);
-        } catch (JwtExpiredTokenException e) {
-            throw new JwtExpiredTokenException("Invalid or expired token");
-        }
+        claims = jwtTokenProviderService.getClaimsFromJwtToken(accessToken);
 
         if (accessToken != null && !claims.isEmpty()) {
 
@@ -59,8 +47,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-
         }
+
         filterChain.doFilter(request, response);
     }
 

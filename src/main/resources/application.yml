@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: logicea-cards-project
+    name: logicea-cards-api
   datasource:
     driver-class-name: org.postgresql.Driver
     password: ${DB_PASSWORD:postgres}

@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -56,7 +55,7 @@ public class JwtTokenProviderService {
             return Jwts.parserBuilder().setSigningKey(getSignInKey()).build().parseClaimsJws(token).getBody();
         } catch (UnsupportedJwtException | MalformedJwtException | IllegalArgumentException | SignatureException exception) {
             log.error("Invalid JWT Token", exception);
-            throw new BadCredentialsException("Invalid JWT token: ", exception);
+            throw new com.logicea.logiceacardsproject.exception.BadCredentialsException("Invalid JWT token: Error::"+ exception);
         } catch (ExpiredJwtException expiredEx) {
             log.info("JWT Token is expired", expiredEx.getMessage());
             throw new JwtExpiredTokenException("JWT Token expired: " + expiredEx);

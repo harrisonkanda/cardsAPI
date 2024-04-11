@@ -13,7 +13,7 @@ public class CardSpecification {
             if (name == null || name.isEmpty()) {
                 return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
             }
-            return criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + name + "%");
+            return criteriaBuilder.like(criteriaBuilder.lower(root.get("name")),  "%"+ name.toLowerCase() +"%");
         };
     }
 
@@ -22,7 +22,7 @@ public class CardSpecification {
             if (color == null || color.isEmpty()) {
                 return criteriaBuilder.isTrue(criteriaBuilder.literal(true));
             }
-            return criteriaBuilder.equal(criteriaBuilder.lower(root.get("color")), color);
+            return criteriaBuilder.equal(criteriaBuilder.lower(root.get("color")), "%"+ color.toLowerCase() +"%");
         };
     }
 
